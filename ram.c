@@ -44,7 +44,7 @@ void alocar_TP(){
     for(int i = 0; i < 128; i++){
         ram.tabela_de_paginas[i] = (Entrada*)malloc(sizeof(Entrada));
         ram.tabela_de_paginas[i]->presente_na_ram = 0;
-        ram.tabela_de_paginas[i]->processo = i / 32;
+        ram.tabela_de_paginas[i]->processo = (i / 32) + 1;
         ram.tabela_de_paginas[i]->end_virtual = i % 32;
     }
 }
@@ -78,6 +78,7 @@ int alocar_entrada(int processo, int end_virtual, int modo)
         // quando nao esta na ram, verifica se tem espaço
         if (ram.contador == 16){ 
             // page-fault
+            printf("\nPage-fault\n");
             return 1;
         }
         else{
@@ -96,11 +97,11 @@ int alocar_entrada(int processo, int end_virtual, int modo)
 }
 
 void mostra_paginas_ram(){
-    for(int i = 0; i < 16; i++){
+    for(int i = 0; i < 128; i++){
         Entrada* entrada = ram.tabela_de_paginas[i];
         if(entrada->presente_na_ram == 1){
             printf("Pagina %d:\n", i);
-            printf("processo: %d\tend_virtual: %d\tpresente na ram: %d\tmodificado: %d\treferenciado: %d\tend_fisico: %d",
+            printf("processo: %d\tend_virtual: %d\tpresente na ram: %d\tmodificado: %d\treferenciado: %d\tend_fisico: %d\n",
             entrada->processo, entrada->end_virtual, entrada->presente_na_ram, entrada->modificado, entrada->referenciado, entrada->end_fisico);
         }
     }
@@ -137,16 +138,23 @@ int main(){
 
     // Inicializa o gerador de números aleatórios com uma semente
     srand(time(NULL));  // Faz com que os números mudem a cada execução
-
-    int pf;
-    for (int i = 0; i < 16; i++){
-        pf = alocar_entrada(1, rand() % 32, rand() % 2);
+    
+    int pf, modo, pagina;
+    for (int i = 0; i < 50; i++){
+        pagina = rand() % 32;
+        modo = rand() % 2;
+        printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", i, pagina, modo);
+        pf = alocar_entrada(1, pagina, modo);
+        if(pf == 1){
+            break;
+        }
         
+        mostra_paginas_ram();
     }
 
     
     desalocar_TP();
     printf("TP desalocada\n");
-    
+
     return 0;
 }
