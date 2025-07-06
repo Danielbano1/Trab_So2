@@ -121,6 +121,9 @@ void gera_pagina(Processo processo)
 }
 
 int main(){
+    alocar_TP();
+    printf("TP alocada\n");
+
     // Inicializa o gerador de números aleatórios com uma semente
     srand(time(NULL));  // Faz com que os números mudem a cada execução
 
@@ -129,8 +132,9 @@ int main(){
         pf = alocar_entrada(1, rand() % 32, rand() % 2);
     }
 
-    alocar_TP();
+    
     desalocar_TP();
-
+    printf("TP desalocada\n");
+    
     return 0;
 }
