@@ -65,7 +65,7 @@ Entrada* procura_na_ram(int processo, int end_virtual)
     }
 }
 
-
+// PAGE-FAULT - 1, sem erro - 0
 int alocar_entrada(int processo, int end_virtual, int modo)
 {
     Entrada* entrada = procura_na_ram(processo, end_virtual);
