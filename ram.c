@@ -95,6 +95,17 @@ int alocar_entrada(int processo, int end_virtual, int modo)
     return 0;
 }
 
+void mostra_paginas_ram(){
+    for(int i = 0; i < 16; i++){
+        Entrada* entrada = ram.tabela_de_paginas[i];
+        if(entrada->presente_na_ram == 1){
+            printf("Pagina %d:\n", i);
+            printf("processo: %d\tend_virtual: %d\tpresente na ram: %d\tmodificado: %d\treferenciado: %d\tend_fisico: %d",
+            entrada->processo, entrada->end_virtual, entrada->presente_na_ram, entrada->modificado, entrada->referenciado, entrada->end_fisico);
+        }
+    }
+}
+
 // Funcoes dos processos
 // troca estado e guarda a pagina gerada
 void bloqueia(Processo processo)
@@ -130,6 +141,7 @@ int main(){
     int pf;
     for (int i = 0; i < 16; i++){
         pf = alocar_entrada(1, rand() % 32, rand() % 2);
+        
     }
 
     
