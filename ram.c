@@ -20,6 +20,14 @@ typedef struct
     int contador;  // conta quantas paginas estao alocadas, maximo 16    
 }Ram;
 
+// Estruturas de algoritmos
+typedef struct 
+{
+    Entrada* entrada;
+    int categoria;  // 1-4
+}Tabela_nru;
+
+
 // Estruturas dos processos
 typedef struct
 {
@@ -65,6 +73,15 @@ Entrada* procura_na_ram(int processo, int end_virtual)
     }
 }
 
+void zera_bit_R(){
+    for(int i = 0; i < 128; i++){
+        Entrada* entrada = ram.tabela_de_paginas[i];
+        if(entrada->presente_na_ram == 1){
+            entrada->referenciado = 0;
+        }
+    }
+}
+
 // PAGE-FAULT - 1, sem erro - 0
 int alocar_entrada(int processo, int end_virtual, int modo)
 {
@@ -96,6 +113,7 @@ int alocar_entrada(int processo, int end_virtual, int modo)
     return 0;
 }
 
+
 void mostra_paginas_ram(){
     for(int i = 0; i < 128; i++){
         Entrada* entrada = ram.tabela_de_paginas[i];
@@ -106,6 +124,44 @@ void mostra_paginas_ram(){
         }
     }
 }
+
+// Algoritmos de substituicao
+
+int calcula_categoriaNRU(Tabela_nru valor){
+    if(valor.entrada->referenciado == 0 && valor.entrada->modificado == 0){
+        return 1;
+    }
+    else if(valor.entrada->referenciado == 0 && valor.entrada->modificado == 1){
+        return 2;
+    }
+    else if(valor.entrada->referenciado == 1 && valor.entrada->modificado == 0){
+        return 3;
+    }
+    else if(valor.entrada->referenciado == 1 && valor.entrada->modificado == 1){
+        return 4;
+    }
+}
+
+void monta_tabelaNRU(Tabela_nru tabela[], int tam){
+    // monta tabela_nru
+    for(int i = 0, j = 0; i < 128; i++){
+        Entrada* entrada = ram.tabela_de_paginas[i];
+        if(entrada->presente_na_ram == 1){
+            tabela[j].entrada = entrada;
+            tabela[j].categoria = calcula_categoriaNRU(tabela[j]);
+        }
+        
+        j++;
+    }
+} 
+
+void NRU(){
+    Tabela_nru tabela[16];
+
+    
+    ram.contador--;
+}
+
 
 // Funcoes dos processos
 // troca estado e guarda a pagina gerada
@@ -139,19 +195,26 @@ int main(){
     // Inicializa o gerador de números aleatórios com uma semente
     srand(time(NULL));  // Faz com que os números mudem a cada execução
     
+    // escalonamento round-robin
+    int rodadas;
     int pf, modo, pagina;
-    for (int i = 0; i < 50; i++){
+    for(int processo = 1; rodadas <= 0; rodadas--, processo++){
         pagina = rand() % 32;
         modo = rand() % 2;
-        printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", i, pagina, modo);
-        pf = alocar_entrada(1, pagina, modo);
+        printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", rodadas, pagina, modo);
+        pf = alocar_entrada(processo, pagina, modo);
         if(pf == 1){
             break;
         }
-        
-        mostra_paginas_ram();
-    }
 
+        mostra_paginas_ram();
+
+        // acaba 1 rodada
+        if(processo == 4){
+            processo = 1;
+            zera_bit_R();
+        }
+    }
     
     desalocar_TP();
     printf("TP desalocada\n");
