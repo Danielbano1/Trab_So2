@@ -115,12 +115,13 @@ int alocar_entrada(int processo, int end_virtual, int modo)
         // quando nao esta na ram, verifica se tem espaço
         if (ram.contador == 16)
         {
-            // page-fault
-            printf("\nPage-fault\n");
+            // page-fault com substituicao de pagina
+            printf("\nPage-fault com substituicao de pagina\n");
             return 1;
         }
         else
         {
+            // page-fault
             ram.contador++;
             entrada->presente_na_ram = 1;
             entrada->referenciado = 1;
@@ -223,7 +224,6 @@ Entrada *escolhe_paginaNRU(Tabela_nru tabela[], int tam)
 Entrada *NRU()
 {
     Tabela_nru tabela[16];
-    int retirado;
 
     monta_tabelaNRU(tabela, 16);
     return escolhe_paginaNRU(tabela, 16);
@@ -231,6 +231,13 @@ Entrada *NRU()
 
 // Funcoes dos processos
 // troca estado e guarda a pagina gerada
+
+void start_processos(Processo lista_processos[], int tam){
+    for (int i = 0; i < tam; i++){
+        lista_processos[i].estado = 1;
+    }
+}
+
 void bloqueia(Processo processo)
 {
     processo.estado = 0;
@@ -264,21 +271,35 @@ int main()
     // Inicializa o gerador de números aleatórios com uma semente
     srand(time(NULL)); // Faz com que os números mudem a cada execução
 
+    // Cria processos
+    Processo lista_processos[4];
+    start_processos(lista_processos, 4);
+
     // escalonamento round-robin
     int rodadas = 20;
     int pf, modo, pagina;
+    Processo proc;
+
     for (int processo = 1; rodadas >= 0; rodadas--, processo++)
     {
-        pagina = rand() % 32;
-        modo = rand() % 2;
+        proc = lista_processos[processo-1];
+    
+        pagina = proc.pagina_atual.numero;
+        modo = proc.pagina_atual.modo;
+        gera_pagina(proc);
+
         printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", rodadas, pagina, modo);
         pf = alocar_entrada(processo, pagina, modo);
         if (pf == 1)
         {
-            break;
-        }
+            mostra_paginas_ram();
 
-        //mostra_paginas_ram();
+            // trata page-fault com subsituicao
+            Entrada* retirada = NRU();
+            remove_pagina(retirada);
+            
+            mostra_paginas_ram();
+        }
 
         // acaba 1 rodada
         if (processo == 4)
@@ -287,15 +308,6 @@ int main()
             zera_bit_R();
         }
     }
-
-    mostra_paginas_ram();
-
-    // trata page-fault
-    Entrada* retirada = NRU();
-    remove_pagina(retirada);
-    
-
-    mostra_paginas_ram();
 
     desalocar_TP();
     printf("TP desalocada\n");
