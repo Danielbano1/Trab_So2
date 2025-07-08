@@ -69,10 +69,11 @@ void remove_pagina(Entrada* entrada){
     // pagina suja indo para o swap
     if (entrada->modificado == 1){
         printf("\nKernel: Página %d do processo %d foi modificada. Simulando cópia para o disco.\n", entrada->end_virtual, entrada->processo);
-        entrada->modificado = 0;
+        entrada->modificado = 0; 
     }
     entrada->presente_na_ram = 0;
     ram.contador--;
+    printf("\nKernel: Página %d do processo %d foi removida!\n\n", entrada->end_virtual, entrada->processo);
 }
 
 // MMU
@@ -181,9 +182,9 @@ void monta_tabelaNRU(Tabela_nru tabela[], int tam)
         {
             tabela[j].entrada = entrada;
             tabela[j].categoria = calcula_categoriaNRU(tabela[j]);
+            j++;
         }
 
-        j++;
     }
 }
 
@@ -264,9 +265,9 @@ int main()
     srand(time(NULL)); // Faz com que os números mudem a cada execução
 
     // escalonamento round-robin
-    int rodadas;
+    int rodadas = 20;
     int pf, modo, pagina;
-    for (int processo = 1; rodadas <= 0; rodadas--, processo++)
+    for (int processo = 1; rodadas >= 0; rodadas--, processo++)
     {
         pagina = rand() % 32;
         modo = rand() % 2;
@@ -292,6 +293,7 @@ int main()
     // trata page-fault
     Entrada* retirada = NRU();
     remove_pagina(retirada);
+    
 
     mostra_paginas_ram();
 
