@@ -65,6 +65,16 @@ void desalocar_TP()
     }
 }
 
+void remove_pagina(Entrada* entrada){
+    // pagina suja indo para o swap
+    if (entrada->modificado == 1){
+        printf("\nKernel: Página %d do processo %d foi modificada. Simulando cópia para o disco.\n", entrada->end_virtual, entrada->processo);
+        entrada->modificado = 0;
+    }
+    entrada->presente_na_ram = 0;
+    ram.contador--;
+}
+
 // MMU
 Entrada *procura_na_ram(int processo, int end_virtual)
 {
@@ -267,7 +277,7 @@ int main()
             break;
         }
 
-        mostra_paginas_ram();
+        //mostra_paginas_ram();
 
         // acaba 1 rodada
         if (processo == 4)
@@ -276,6 +286,14 @@ int main()
             zera_bit_R();
         }
     }
+
+    mostra_paginas_ram();
+
+    // trata page-fault
+    Entrada* retirada = NRU();
+    remove_pagina(retirada);
+
+    mostra_paginas_ram();
 
     desalocar_TP();
     printf("TP desalocada\n");
