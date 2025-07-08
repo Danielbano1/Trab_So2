@@ -275,7 +275,15 @@ int main()
         pf = alocar_entrada(processo, pagina, modo);
         if (pf == 1)
         {
-            break;
+            mostra_paginas_ram();
+
+            // trata page-fault
+            Entrada* retirada = NRU();
+            remove_pagina(retirada);
+        
+            mostra_paginas_ram();
+            pf = alocar_entrada(processo, pagina, modo);
+            mostra_paginas_ram();
         }
 
         //mostra_paginas_ram();
@@ -288,15 +296,7 @@ int main()
         }
     }
 
-    mostra_paginas_ram();
-
-    // trata page-fault
-    Entrada* retirada = NRU();
-    remove_pagina(retirada);
     
-
-    mostra_paginas_ram();
-
     desalocar_TP();
     printf("TP desalocada\n");
 
