@@ -29,25 +29,6 @@ typedef struct
     int categoria; // 1-4
 } Tabela_nru;
 
-// Interface para algoritmos usando padrao Strategy
-
-typedef Entrada* (*FuncCriaEstrutura)();
-typedef Entrada* (*FuncNovaEntrada)();
-typedef Entrada* (*FuncTerminoRodada)();
-typedef Entrada* (*FuncZeroBitsR)();
-typedef Entrada* (*FuncSelecionaPagina)();
-
-typedef struct 
-{
-    FuncSelecionaPagina seleciona_pagina;
-}Substituicao;
-
-void escolher_algoritmo(Substituicao* substituicao, int algoritmo){
-    if(algoritmo == 1){
-        substituicao->seleciona_pagina = NRU;
-    }
-}
-
 
 // Estruturas dos processos
 typedef struct
@@ -262,6 +243,25 @@ Entrada *NRU()
 
     monta_tabelaNRU(tabela, 16);
     return escolhe_paginaNRU(tabela, 16);
+}
+
+// Interface para algoritmos usando padrao Strategy
+
+typedef Entrada* (*FuncCriaEstrutura)();
+typedef Entrada* (*FuncNovaEntrada)();
+typedef Entrada* (*FuncTerminoRodada)();
+typedef Entrada* (*FuncZeroBitsR)();
+typedef Entrada* (*FuncSelecionaPagina)();
+
+typedef struct 
+{
+    FuncSelecionaPagina seleciona_pagina;
+}Substituicao;
+
+void escolher_algoritmo(Substituicao* substituicao, int algoritmo){
+    if(algoritmo == 1){
+        substituicao->seleciona_pagina = NRU;
+    }
 }
 
 // Funcoes dos processos
