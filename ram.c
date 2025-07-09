@@ -29,6 +29,26 @@ typedef struct
     int categoria; // 1-4
 } Tabela_nru;
 
+// Interface para algoritmos usando padrao Strategy
+
+typedef Entrada* (*FuncCriaEstrutura)();
+typedef Entrada* (*FuncNovaEntrada)();
+typedef Entrada* (*FuncTerminoRodada)();
+typedef Entrada* (*FuncZeroBitsR)();
+typedef Entrada* (*FuncSelecionaPagina)();
+
+typedef struct 
+{
+    FuncSelecionaPagina seleciona_pagina;
+}Substituicao;
+
+void escolher_algoritmo(Substituicao* substituicao, int algoritmo){
+    if(algoritmo == 1){
+        substituicao->seleciona_pagina = NRU;
+    }
+}
+
+
 // Estruturas dos processos
 typedef struct
 {
@@ -273,6 +293,9 @@ void gera_pagina(Processo processo)
 
 int main()
 {
+    Substituicao substituicao;
+    escolher_algoritmo(&substituicao, 1);
+    
     alocar_TP();
     printf("TP alocada\n");
 
@@ -293,7 +316,7 @@ int main()
             mostra_paginas_ram();
 
             // trata page-fault
-            Entrada* retirada = NRU();
+            Entrada* retirada = substituicao.seleciona_pagina();
             remove_pagina(retirada);
             
             mostra_paginas_ram();
