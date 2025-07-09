@@ -287,14 +287,16 @@ void termina_fila_SC(Fila_SC* fila){
     atual->prox = primeiro;
 }
 
-Fila_SC* cria_fila_SC(){
+void* cria_fila_SC(){
     Fila_SC* fila = (Fila_SC*)malloc(sizeof(Fila_SC));
     fila->inicio = NULL;
     termina_fila_SC(fila);
     return fila;
 }
 
-void insere_entrada_SC(Fila_SC* fila, Entrada* entrada){
+void insere_entrada_SC(void* estrutura, Entrada* entrada){
+    Fila_SC* fila = (Fila_SC*)estrutura;
+
     No_SC* atual = fila->inicio;
 
     while(atual->entrada != NULL){
@@ -307,7 +309,9 @@ void insere_entrada_SC(Fila_SC* fila, Entrada* entrada){
     atual->entrada = entrada; 
 }
 
-Entrada* remove_SC(Fila_SC* fila){
+Entrada* remove_SC(void* estrutura){
+    Fila_SC* fila = (Fila_SC*)estrutura;
+
     No_SC* retirado;
     Entrada* retirada;
     while(fila->inicio->entrada->referenciado == 1){
@@ -322,7 +326,9 @@ Entrada* remove_SC(Fila_SC* fila){
     return retirada;
 }
 
-void imprime_fila_SC(Fila_SC* fila){
+void imprime_fila_SC(void* estrutura){
+    Fila_SC* fila = (Fila_SC*)estrutura;
+
     No_SC* atual = fila->inicio;
     printf("\nFila Segunda_chance:\n");
     for(int i = 0; i < 16; i++){
@@ -337,19 +343,35 @@ void imprime_fila_SC(Fila_SC* fila){
     printf("\n\tFim da fila\n");
 }
 
+void libera_SC(void* estrutura){
+    Fila_SC* fila = (Fila_SC*)estrutura;
+
+    No_SC* atual;
+    for(int i = 0; i < 16; i++){
+        atual = fila->inicio;
+        fila->inicio = atual->prox;
+        free(atual);
+    }
+    free(fila);
+}
+
 
 // Interface para algoritmos usando padrao Strategy
-typedef Fila_SC* (*FuncCriaEstrutura)();
-typedef Entrada* (*FuncLiberaEstrutura)();
-typedef Entrada* (*FuncNovaEntrada)();
-typedef Entrada* (*FuncTerminoRodada)();
-typedef Entrada* (*FuncZeroBitsR)();
+typedef void* (*FuncCriaEstrutura)();
+typedef void (*FuncLiberaEstrutura)();
+typedef void (*FuncNovaEntrada)();
+typedef void (*FuncTerminoRodada)();
+typedef void (*FuncZeroBitsR)();    // apagar?
 typedef Entrada* (*FuncSelecionaPagina)();
+typedef void (*FuncImprimeEstrutura)();
 
 typedef struct 
 {
     FuncCriaEstrutura cria_estrutura;
     FuncSelecionaPagina seleciona_pagina;
+    FuncNovaEntrada nova_entrada;
+    FuncImprimeEstrutura imprime_estrutura;
+    FuncLiberaEstrutura libera_estrutura;
 }Substituicao;
 
 void escolher_algoritmo(Substituicao* substituicao, int algoritmo){
@@ -359,6 +381,9 @@ void escolher_algoritmo(Substituicao* substituicao, int algoritmo){
     else if(algoritmo == 2){
         substituicao->seleciona_pagina = remove_SC;
         substituicao->cria_estrutura = cria_fila_SC;
+        substituicao->nova_entrada = insere_entrada_SC;
+        substituicao->imprime_estrutura = imprime_fila_SC;
+        substituicao->libera_estrutura = libera_SC;
     }
     else{
         printf("\nEscolha errada\n");
@@ -400,7 +425,7 @@ int main()
     escolher_algoritmo(&substituicao, 2);
 
     // se substituicao != 1
-    Fila_SC* fila = cria_fila_SC();
+    void* estrutura = substituicao.cria_estrutura();
 
     alocar_TP();
     printf("TP alocada\n");
@@ -424,26 +449,24 @@ int main()
         {
             printf("\n1\n");
             mostra_paginas_ram();
-            imprime_fila_SC(fila);
+            substituicao.imprime_estrutura(estrutura);
 
             // trata page-fault
             // se substituicao != 1
-            Entrada* retirada = substituicao.seleciona_pagina(fila);
+            Entrada* retirada = substituicao.seleciona_pagina(estrutura);
             remove_pagina(retirada);
-            imprime_fila_SC(fila);
-            
+
+            substituicao.imprime_estrutura(estrutura);
             mostra_paginas_ram();
+
             pf = alocar_entrada(processo, pagina, modo);
-            insere_entrada_SC(fila, procura_na_ram(processo, pagina));
-            imprime_fila_SC(fila);
-            printf("\nKernel: Página %d do processo %d foi alocada!\n\n", pagina, processo);
-            mostra_paginas_ram();
+            
         }
-        else{
-            // se substituicao != 1
-            insere_entrada_SC(fila, procura_na_ram(processo, pagina));
-            imprime_fila_SC(fila);
-        }
+
+        substituicao.nova_entrada(estrutura, procura_na_ram(processo, pagina));
+        printf("\nKernel: Página %d do processo %d foi alocada!\n\n", pagina, processo);
+        mostra_paginas_ram();
+        substituicao.imprime_estrutura(estrutura);
 
         //mostra_paginas_ram();
 
@@ -455,7 +478,8 @@ int main()
         }
     }
 
-    
+    substituicao.libera_estrutura(estrutura);
+    printf("estrutura desalocada\n");
     desalocar_TP();
     printf("TP desalocada\n");
 
