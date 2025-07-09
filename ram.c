@@ -17,6 +17,7 @@ typedef struct
 typedef struct
 {
     Entrada *tabela_de_paginas[128]; // vetor de 4 x 32 = 128 entradas
+    int vetor_alocadas[16];          // 1 - alocada, 0 vazia
     int contador;                    // conta quantas paginas estao alocadas, maximo 16
 } Ram;
 
@@ -55,6 +56,10 @@ void alocar_TP()
         ram.tabela_de_paginas[i]->processo = (i / 32) + 1;
         ram.tabela_de_paginas[i]->end_virtual = i % 32;
     }
+
+    for (int i = 0; i < 16; i++){
+        ram.vetor_alocadas[i] = 0;
+    }
 }
 
 void desalocar_TP()
@@ -73,6 +78,7 @@ void remove_pagina(Entrada* entrada){
     }
     entrada->presente_na_ram = 0;
     ram.contador--;
+    ram.vetor_alocadas[entrada->end_fisico-1] = 0;
     printf("\nKernel: Página %d do processo %d foi removida!\n\n", entrada->end_virtual, entrada->processo);
 }
 
@@ -96,6 +102,15 @@ void zera_bit_R()
         if (entrada->presente_na_ram == 1)
         {
             entrada->referenciado = 0;
+        }
+    }
+}
+
+int primeiro_vazio_TP(){
+    for(int i = 0; i < 16; i++){
+        if (ram.vetor_alocadas[i] == 0){
+            ram.vetor_alocadas[i] = 1;
+            return i+1;
         }
     }
 }
@@ -124,7 +139,7 @@ int alocar_entrada(int processo, int end_virtual, int modo)
             ram.contador++;
             entrada->presente_na_ram = 1;
             entrada->referenciado = 1;
-            entrada->end_fisico = ram.contador;
+            entrada->end_fisico = primeiro_vazio_TP();
         }
     }
     // verifica se vai ser modificado
@@ -280,9 +295,10 @@ int main()
             // trata page-fault
             Entrada* retirada = NRU();
             remove_pagina(retirada);
-        
+            
             mostra_paginas_ram();
             pf = alocar_entrada(processo, pagina, modo);
+            printf("\nKernel: Página %d do processo %d foi alocada!\n\n", pagina, processo);
             mostra_paginas_ram();
         }
 
