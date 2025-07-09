@@ -320,6 +320,10 @@ Entrada* remove_SC(Fila_SC* fila){
 void imprime_fila_SC(Fila_SC* fila){
     No_SC* atual = fila->inicio;
     printf("\nFila Segunda_chance:\n");
+    if(atual == NULL){
+        printf("fila vazia\n");
+        return;
+    }
     printf("Inicio: Processo: %d, end_virtual: %d, referenciado: %d\n", atual->entrada->processo, atual->entrada->end_virtual, atual->entrada->referenciado);
     atual = fila->inicio->prox;
     while(atual != fila->inicio){
