@@ -247,11 +247,12 @@ Entrada *NRU()
 }
 
 // Second-Chance
-typedef struct
-{
+typedef struct No_SC No_SC;
+
+typedef struct {
     Entrada* entrada;
     No_SC* prox;
-}No_SC;
+} No_SC;
 
 typedef struct 
 {
