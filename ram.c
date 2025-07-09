@@ -298,6 +298,9 @@ void insere_entrada_SC(Fila_SC* fila, Entrada* entrada){
     No_SC* atual = fila->inicio;
 
     while(atual->entrada != NULL){
+        if (atual->entrada == entrada){
+            break;
+        }
         atual = atual->prox;
     }
 
@@ -305,14 +308,16 @@ void insere_entrada_SC(Fila_SC* fila, Entrada* entrada){
 }
 
 Entrada* remove_SC(Fila_SC* fila){
+    No_SC* retirado;
     Entrada* retirada;
     while(fila->inicio->entrada->referenciado == 1){
         fila->inicio->entrada->referenciado = 0;
         fila->inicio = fila->inicio->prox;
     }
     retirada = fila->inicio->entrada;
-    retirada->presente_na_ram = 0;
+    retirado = fila->inicio;
     fila->inicio = fila->inicio->prox;
+    retirado->entrada = NULL;
 
     return retirada;
 }
@@ -320,17 +325,16 @@ Entrada* remove_SC(Fila_SC* fila){
 void imprime_fila_SC(Fila_SC* fila){
     No_SC* atual = fila->inicio;
     printf("\nFila Segunda_chance:\n");
-    if(atual == NULL){
-        printf("fila vazia\n");
-        return;
-    }
-    printf("Inicio: Processo: %d, end_virtual: %d, referenciado: %d\n", atual->entrada->processo, atual->entrada->end_virtual, atual->entrada->referenciado);
-    atual = fila->inicio->prox;
-    while(atual != fila->inicio){
-        printf("Inicio: Processo: %d, end_virtual: %d, referenciado: %d\n", atual->entrada->processo, atual->entrada->end_virtual, atual->entrada->referenciado);
+    for(int i = 0; i < 16; i++){
+        if(atual->entrada == NULL){
+            printf("espaco vazio\n");
+        }
+        else{
+            printf("Processo: %d, end_virtual: %d, referenciado: %d\n", atual->entrada->processo, atual->entrada->end_virtual, atual->entrada->referenciado);
+        }
         atual = atual->prox;
     }
-    printf("\n--------------------\n");
+    printf("\n\tFim da fila\n");
 }
 
 
@@ -412,7 +416,7 @@ int main()
         pagina = rand() % 32;
         modo = rand() % 2;
         printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", rodadas, pagina, modo);
-        if(rodadas == 4){
+        if(rodadas <= 4){
             printf("\n2\n");
         }
         pf = alocar_entrada(processo, pagina, modo);
@@ -426,17 +430,19 @@ int main()
             // se substituicao != 1
             Entrada* retirada = substituicao.seleciona_pagina(fila);
             remove_pagina(retirada);
+            imprime_fila_SC(fila);
             
             mostra_paginas_ram();
             pf = alocar_entrada(processo, pagina, modo);
             insere_entrada_SC(fila, procura_na_ram(processo, pagina));
+            imprime_fila_SC(fila);
             printf("\nKernel: Página %d do processo %d foi alocada!\n\n", pagina, processo);
             mostra_paginas_ram();
         }
         else{
             // se substituicao != 1
-            imprime_fila_SC(fila);
             insere_entrada_SC(fila, procura_na_ram(processo, pagina));
+            imprime_fila_SC(fila);
         }
 
         //mostra_paginas_ram();
