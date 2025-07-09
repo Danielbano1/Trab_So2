@@ -317,9 +317,21 @@ Entrada* remove_SC(Fila_SC* fila){
     return retirada;
 }
 
+void imprime_fila_SC(Fila_SC* fila){
+    No_SC* atual = fila->inicio;
+    printf("\nFila Segunda_chance:\n");
+    printf("Inicio: Processo: %d, end_virtual: %d, referenciado: %d\n", atual->entrada->processo, atual->entrada->end_virtual, atual->entrada->referenciado);
+    atual = fila->inicio->prox;
+    while(atual != fila->inicio){
+        printf("Inicio: Processo: %d, end_virtual: %d, referenciado: %d\n", atual->entrada->processo, atual->entrada->end_virtual, atual->entrada->referenciado);
+        atual = atual->prox;
+    }
+    printf("\n--------------------\n");
+}
+
 
 // Interface para algoritmos usando padrao Strategy
-typedef Entrada* (*FuncCriaEstrutura)();
+typedef Fila_SC* (*FuncCriaEstrutura)();
 typedef Entrada* (*FuncLiberaEstrutura)();
 typedef Entrada* (*FuncNovaEntrada)();
 typedef Entrada* (*FuncTerminoRodada)();
@@ -396,12 +408,15 @@ int main()
         pagina = rand() % 32;
         modo = rand() % 2;
         printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", rodadas, pagina, modo);
+        if(rodadas == 4){
+            printf("\n2\n");
+        }
         pf = alocar_entrada(processo, pagina, modo);
-        // se substituicao != 1
-        insere_entrada_SC(fila, procura_na_ram(processo, pagina));
         if (pf == 1)
         {
+            printf("\n1\n");
             mostra_paginas_ram();
+            imprime_fila_SC(fila);
 
             // trata page-fault
             // se substituicao != 1
@@ -413,6 +428,11 @@ int main()
             insere_entrada_SC(fila, procura_na_ram(processo, pagina));
             printf("\nKernel: Página %d do processo %d foi alocada!\n\n", pagina, processo);
             mostra_paginas_ram();
+        }
+        else{
+            // se substituicao != 1
+            imprime_fila_SC(fila);
+            insere_entrada_SC(fila, procura_na_ram(processo, pagina));
         }
 
         //mostra_paginas_ram();
