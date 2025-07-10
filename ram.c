@@ -10,7 +10,7 @@ typedef struct
     int presente_na_ram; // nao - 0, sim - 1
     int modificado;
     int referenciado;
-    int end_fisico; // 0-15
+    int end_fisico; // 1-16
 
 } Entrada;
 
@@ -394,7 +394,6 @@ void libera_estrutura_WK(void* estrutura){
         }
     }
     free(removida);
-    removida = NULL;
 }
 
 void remove_velho_WK(int* vetor, int k){
@@ -723,7 +722,7 @@ void gera_pagina(Processo processo)
 int main()
 {
     Substituicao substituicao;
-    escolher_algoritmo(&substituicao, 3);
+    escolher_algoritmo(&substituicao, 4);
 
     // cria estrutura
     void* estrutura;
