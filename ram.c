@@ -1,6 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <sys/shm.h>
+
+#define NUM_FILHOS 4
 
 // Estruturas da Ram
 typedef struct
@@ -46,6 +53,10 @@ typedef struct
 
 // Variaveis globais
 Ram ram;
+Processo* p = NULL;      // ponteiro para memória compartilhada
+Processo processo_local; // struct local em cada processo
+pid_t filhos[NUM_FILHOS];
+int shmid;
 
 // kernel
 void alocar_TP()
@@ -692,31 +703,25 @@ void escolher_algoritmo(Substituicao* substituicao, int algoritmo){
     
 }
 
-// Funcoes dos processos
-// troca estado e guarda a pagina gerada
-void bloqueia(Processo processo)
-{
-    processo.estado = 0;
-    processo.pagina_guardada = processo.pagina_atual;
+// Funcoes dos processos e handlers
+void gera_pagina(Processo* proc) {
+    
+    proc->pagina_atual.numero = rand() % 32;
+    proc->pagina_atual.modo = rand() % 2;
+    
 }
 
-void desbloqueia(Processo processo)
-{
-    processo.estado = 1;
+void handler_sigusr1(int sig) {
+    gera_pagina(&processo_local);
+    *p = processo_local; // sobrescreve memoria compartilhada
+
+    // Avisa o pai que terminou
+    kill(getppid(), SIGUSR2);
 }
 
-void gera_pagina(Processo processo)
-{
-    if (processo.pagina_guardada.numero != -1)
-    {
-        processo.pagina_atual = processo.pagina_guardada;
-        processo.pagina_guardada.numero = -1;
-    }
-    else
-    {
-        processo.pagina_atual.numero = rand() % 32;
-        processo.pagina_atual.modo = rand() % 2;
-    }
+void handler_sigusr2(int sig) {
+    // lê a memória compartilhada atualizada
+    processo_local = *p;
 }
 
 int main()
@@ -762,13 +767,57 @@ int main()
     // Inicializa o gerador de números aleatórios com uma semente
     srand(time(NULL)); // Faz com que os números mudem a cada execução
 
+    // Criar memória compartilhada para um Processo
+    shmid = shmget(IPC_PRIVATE, sizeof(Processo), IPC_CREAT | 0666);
+    if (shmid == -1) {
+        perror("shmget");
+        exit(1);
+    }
+    p = (Processo*)shmat(shmid, NULL, 0);
+    if (p == (void*)-1) {
+        perror("shmat");
+        exit(1);
+    }
+
+    // Inicializa a memória compartilhada
+    processo_local.estado = 1;
+    processo_local.pagina_guardada.numero = -1;
+    processo_local.pagina_atual.numero = -1;
+    *p = processo_local;
+
+    // Cria filhos e registra handlers
+    for (int i = 0; i < NUM_FILHOS; i++) {
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            exit(1);
+        } else if (pid == 0) {
+            // Filho
+            srand(time(NULL) ^ (getpid()<<16));
+            signal(SIGUSR1, handler_sigusr1);
+
+            while (1) {
+                pause();  // espera sinal do pai
+            }
+            exit(0);
+        } else {
+            filhos[i] = pid;
+        }
+    }
+
+    // Pai registra handler para SIGUSR2 
+    signal(SIGUSR2, handler_sigusr2);
+
     // escalonamento round-robin
     int rodadas = 40;
     int pf, modo, pagina;
     for (int processo = 1; rodadas >= 0; rodadas--, processo++)
     {
-        pagina = rand() % 32;
-        modo = rand() % 2;
+        kill(filhos[processo-1], SIGUSR1);
+        pause();
+        modo = processo_local.pagina_atual.modo;
+        pagina = processo_local.pagina_atual.numero;
+
         printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", rodadas, pagina, modo);
         if(rodadas <= 4){
             printf("\n2\n");
@@ -840,6 +889,17 @@ int main()
     if(substituicao.algoritmo != 1){
         substituicao.libera_estrutura(estrutura);
     }
+
+    // Mata filhos e limpa
+    for (int i = 0; i < NUM_FILHOS; i++) {
+        kill(filhos[i], SIGKILL);
+        waitpid(filhos[i], NULL, 0);
+    }
+
+    // Libera Shmem
+    shmdt(p);
+    shmctl(shmid, IPC_RMID, NULL); 
+
     printf("estrutura desalocada\n");
     desalocar_TP();
     printf("TP desalocada\n");
