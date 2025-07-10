@@ -132,6 +132,27 @@ int primeiro_vazio_TP(){
     }
 }
 
+void motar_tabela_processos(){
+    for(int j = 0; j < 4; j++){
+        printf("\n\tTabela do processo %d\n", j+1);
+        for (int i = 0; i < 128; i++){
+            Entrada *entrada = ram.tabela_de_paginas[i];
+            if (entrada->presente_na_ram == 1 && entrada->processo == j+1)
+            {
+                printf("\n\tPaginas na ram\n");
+                printf("end_virtual: %d\tmodificado: %d\treferenciado: %d\tend_fisico: %d\n",
+                    entrada->processo, entrada->end_virtual, entrada->modificado, entrada->referenciado, entrada->end_fisico);
+            }
+            else if(entrada->presente_na_ram == 0 && entrada->processo == j+1){
+                printf("\n\tPaginas na ram\n");
+                printf("end_virtual: %d\tmodificado: %d\treferenciado: %d\tend_fisico: %d\n",
+                    entrada->processo, entrada->end_virtual, entrada->modificado, entrada->referenciado, entrada->end_fisico);
+            }
+        }
+    }
+    
+}
+
 // PAGE-FAULT - 1, sem erro - 0
 int alocar_entrada(int processo, int end_virtual, int modo)
 {
