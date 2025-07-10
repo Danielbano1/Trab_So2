@@ -69,6 +69,7 @@ void desalocar_TP()
     {
         if(ram.tabela_de_paginas[i] != NULL){
             free(ram.tabela_de_paginas[i]);
+            ram.tabela_de_paginas[i] = NULL;
         }
     }
 }
@@ -387,9 +388,13 @@ void libera_estrutura_WK(void* estrutura){
     Estrutura_WK* removida = (Estrutura_WK*)estrutura;
 
     for(int i = 0; i < 4; i++){
-        free(removida->processos[i].vetor);
+        if(removida->processos[i].vetor != NULL){
+            free(removida->processos[i].vetor);
+            removida->processos[i].vetor = NULL;
+        }
     }
     free(removida);
+    removida = NULL;
 }
 
 void remove_velho_WK(int* vetor, int k){
@@ -613,6 +618,7 @@ void exibe_estrutura_LRU(void* estrutura){
     Estrutura_LRU* estrutura_lru = (Estrutura_LRU*)estrutura;
 
     No_LRU atual;
+    printf("\n\tEstrutura LRU_Anging:\n");
     for(int i = 0; i < 16; i++){
         atual = estrutura_lru->vetor[i];
         if (atual.entrada != NULL){
@@ -758,7 +764,7 @@ int main()
     srand(time(NULL)); // Faz com que os números mudem a cada execução
 
     // escalonamento round-robin
-    int rodadas = 20;
+    int rodadas = 40;
     int pf, modo, pagina;
     for (int processo = 1; rodadas >= 0; rodadas--, processo++)
     {
@@ -824,11 +830,11 @@ int main()
         // acaba 1 rodada
         if (processo == 4)
         {
-            processo = 1;
-            zera_bit_R();
             if(substituicao.algoritmo == 4){
                 substituicao.termino_rodada(estrutura);
             }
+            zera_bit_R();
+            processo = 0;
         }
     }
 
