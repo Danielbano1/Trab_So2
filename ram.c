@@ -422,6 +422,8 @@ void referencia_WK(int* vetor, int pos, int k){
     for(int i = k-1; i >= pos; i--){
         if(vetor[i] != -1){
             ult_valor = vetor[i];
+            pos_ult_valor = i;
+            break;
         }
     }
     // coloca o referenciado no final do vetor
@@ -484,7 +486,7 @@ Entrada* remove_WK(void* estrutura, int processo){
     // remover o mais velho do WK
     retirada = procura_na_ram(processo, vetor[0]);
     remove_velho_WK(vetor, k);
-    vetor[k-1] = end_virtual;
+    vetor[k-1] = -1;
 
     return retirada;
 }
