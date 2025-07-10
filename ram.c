@@ -59,6 +59,17 @@ pid_t filhos[NUM_FILHOS];
 int shmid;
 int sinal_recebido = 0;
 int aguardando[4];
+int conta_page_faults=0;
+int substituicao_p[4];
+int conta_pagina_suja = 0;
+
+void imprime_est(){
+    printf("\nTotal de page-faults: %d\n", conta_page_faults);
+    printf("\nTotal de paginas sujas: %d\n", conta_pagina_suja);
+    for(int i = 0; i < 4; i++){
+        printf("\nTotal de substicuicoes do processo %d: %d", i+1, substituicao_p[i]);
+    }
+}
 
 // kernel
 void alocar_TP()
@@ -91,6 +102,7 @@ void remove_pagina(Entrada* entrada){
     // pagina suja indo para o swap
     if (entrada->modificado == 1){
         printf("\nKernel: Página %d do processo %d foi modificada. Simulando cópia para o disco.\n", entrada->end_virtual, entrada->processo);
+        conta_pagina_suja++;
         entrada->modificado = 0; 
     }
     entrada->presente_na_ram = 0;
@@ -173,6 +185,7 @@ int alocar_entrada(int processo, int end_virtual, int modo)
         //page-fault
         if(aguardando[processo-1] == 0){
             printf("\tPage-fault!\n");
+            conta_page_faults++;
         }
             aguardando[processo-1] = 1;
         // quando nao esta na ram, verifica se tem espaço
@@ -180,6 +193,7 @@ int alocar_entrada(int processo, int end_virtual, int modo)
         {
             // page-fault com substituicao
             printf("\tSubstituicao\n");
+            substituicao_p[processo-1]++;
             return 1;
         }
         else
@@ -970,6 +984,8 @@ int main()
 
     desalocar_TP();
     printf("\nTP desalocada\n");
+
+    imprime_est();
 
     return 0;
 }
