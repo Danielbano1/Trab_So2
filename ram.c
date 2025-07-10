@@ -57,6 +57,7 @@ Processo* p = NULL;      // ponteiro para memória compartilhada
 Processo processo_local; // struct local em cada processo
 pid_t filhos[NUM_FILHOS];
 int shmid;
+int sinal_recebido = 0;
 
 // kernel
 void alocar_TP()
@@ -722,6 +723,7 @@ void handler_sigusr1(int sig) {
 void handler_sigusr2(int sig) {
     // lê a memória compartilhada atualizada
     processo_local = *p;
+    sinal_recebido = 1;
 }
 
 int main()
@@ -819,7 +821,11 @@ int main()
     for (int processo = 1; rodadas >= 0; rodadas--, processo++)
     {
         kill(filhos[processo-1], SIGUSR1);
-        pause();
+         // espera até o sinal chegar
+        while (!sinal_recebido) {
+            pause();
+        }
+        
         modo = processo_local.pagina_atual.modo;
         pagina = processo_local.pagina_atual.numero;
 
