@@ -246,6 +246,15 @@ Entrada *NRU()
     return escolhe_paginaNRU(tabela, 16);
 }
 
+void* retorna_nada_ponteiro(){
+    return NULL;
+}
+
+void retorna_nada(void* estrutura){
+    return;
+}
+
+
 // Second-Chance
 typedef struct No_SC {
     Entrada* entrada;
@@ -355,18 +364,129 @@ void libera_SC(void* estrutura){
     free(fila);
 }
 
+// Working-set
+typedef struct 
+{
+    int processo;
+    int* vetor;
+}No_WK;
+
+typedef struct{
+    No_WK processos[4];
+    int k;
+}Estrutura_WK;
+
+void* cria_estrutura_WK(int k){
+    Estrutura_WK* estrutura = (Estrutura_WK*)malloc(sizeof(Estrutura_WK));
+    estrutura->k = k;
+    for(int i = 0; i < 4; i++){
+        estrutura->processos[i].processo = i+1;
+        estrutura->processos[i].vetor = (int*)malloc(sizeof(int)*k);
+        for(int j = 0; j < k; j++){
+            estrutura->processos[i].vetor[j] = -1;
+        }
+    }
+
+    return estrutura;
+}
+
+void libera_estrutura_WK(void* estrutura){
+    Estrutura_WK* removida = (Estrutura_WK*)estrutura;
+
+    for(int i = 0; i < 4; i++){
+        free(removida->processos[i].vetor);
+    }
+    free(removida);
+}
+
+void remove_velho_WK(int* vetor, int k){
+    for(int i = 0; i < (k-1); i++){
+        vetor[i] = vetor[i+1];
+    }
+}
+
+void insere_entrada_WK(void* estrutura, Entrada* entrada){
+    Estrutura_WK* estrutura_wk = (Estrutura_WK*)estrutura;
+
+    int k = estrutura_wk->k;
+    int processo = entrada->processo;
+    int end_virtual = entrada->end_virtual;
+    int* vetor = estrutura_wk->processos[processo-1].vetor;
+
+    for(int i = 0; i < k; i++){
+        if(vetor[i] == -1 || vetor[i] == end_virtual){
+            vetor[i] = end_virtual;
+            return;
+        }
+    }
+
+    remove_velho_WK(vetor, k);
+
+    vetor[k-1] = end_virtual;
+
+}
+
+
+
+Entrada* remove_WK(void* estrutura, int processo){
+    Estrutura_WK* estrutura_wk = (Estrutura_WK*)estrutura;
+
+    int* vetor = estrutura_wk->processos[processo-1].vetor;
+    int k = estrutura_wk->k;
+    int esta_no_wk;
+
+    Entrada* retirada;
+    // ver se tem entrada do processo fora do WK e na ram
+    for(int i = 0; i < 128; i++){
+        esta_no_wk = 0;
+        if (ram.tabela_de_paginas[i]->processo == processo && ram.tabela_de_paginas[i]->presente_na_ram == 1){
+            for(int j = 0; j < k; j++){
+                if(vetor[j] == ram.tabela_de_paginas[i]->end_virtual){
+                    esta_no_wk = 1;
+                    break;
+                }
+            }
+            if(esta_no_wk == 0){
+                return ram.tabela_de_paginas[i];
+            }
+        }
+    }
+    // remover o mais velho do WK
+    retirada = procura_na_ram(processo, vetor[0]);
+    remove_velho_WK(vetor, k);
+
+    return retirada;
+}
+
+void imprime_WK(void* estrutura){
+    Estrutura_WK* estrutura_wk = (Estrutura_WK*)estrutura;
+    int k = estrutura_wk->k;
+    int* lista_processo; 
+    printf("\n======= Working Sets =======\n");
+    for(int i = 0; i < 4; i++){
+        lista_processo = estrutura_wk->processos[i].vetor;
+        printf("\nWorkin-set do processo: %d\n", (i+1));
+        for(int j = 0; j < k; j++){
+            if (lista_processo[j] == -1)
+                printf("[ ] ");
+            else
+                printf("[%02d] ", lista_processo[j]);
+        }
+    }
+}
 
 // Interface para algoritmos usando padrao Strategy
 typedef void* (*FuncCriaEstrutura)();
 typedef void (*FuncLiberaEstrutura)();
 typedef void (*FuncNovaEntrada)();
-typedef void (*FuncTerminoRodada)();
+typedef void (*FuncTerminoRodada)();  // apagar?
 typedef void (*FuncZeroBitsR)();    // apagar?
 typedef Entrada* (*FuncSelecionaPagina)();
 typedef void (*FuncImprimeEstrutura)();
 
 typedef struct 
 {
+    int algoritmo;
     FuncCriaEstrutura cria_estrutura;
     FuncSelecionaPagina seleciona_pagina;
     FuncNovaEntrada nova_entrada;
@@ -375,15 +495,23 @@ typedef struct
 }Substituicao;
 
 void escolher_algoritmo(Substituicao* substituicao, int algoritmo){
+    substituicao->algoritmo =algoritmo;
     if(algoritmo == 1){
         substituicao->seleciona_pagina = NRU;
     }
     else if(algoritmo == 2){
         substituicao->seleciona_pagina = remove_SC;
         substituicao->cria_estrutura = cria_fila_SC;
+        substituicao->libera_estrutura = libera_SC;
         substituicao->nova_entrada = insere_entrada_SC;
         substituicao->imprime_estrutura = imprime_fila_SC;
-        substituicao->libera_estrutura = libera_SC;
+    }
+    else if(algoritmo == 3){
+        substituicao->seleciona_pagina = remove_WK; //diferente
+        substituicao->cria_estrutura = cria_estrutura_WK; //diferente
+        substituicao->libera_estrutura = libera_estrutura_WK;
+        substituicao->nova_entrada = insere_entrada_WK;
+        substituicao->imprime_estrutura = imprime_WK;
     }
     else{
         printf("\nEscolha errada\n");
@@ -424,8 +552,38 @@ int main()
     Substituicao substituicao;
     escolher_algoritmo(&substituicao, 2);
 
+    // cria estrutura
+    void* estrutura;
     // se substituicao != 1
-    void* estrutura = substituicao.cria_estrutura();
+    switch (substituicao.algoritmo)
+    {
+        case 1:
+            /* code */
+            break;
+        
+        case 2:
+            estrutura = substituicao.cria_estrutura();
+            break;
+        
+        case 3:
+            int k;
+            printf("\nDiga um tamanho para k(sem ser maior que 5): \n");
+            scanf("%d", &k);
+            if(k > 5){
+                printf("valor maior que 5");
+                exit(1);
+            }
+            estrutura = substituicao.cria_estrutura(k);
+            break;
+        
+        case 4:
+            /* code */
+            break;
+        
+        default:
+            break;
+    }
+     
 
     alocar_TP();
     printf("TP alocada\n");
@@ -452,8 +610,29 @@ int main()
             substituicao.imprime_estrutura(estrutura);
 
             // trata page-fault
-            // se substituicao != 1
-            Entrada* retirada = substituicao.seleciona_pagina(estrutura);
+            Entrada* retirada;
+            switch (substituicao.algoritmo)
+            {
+                case 1:
+                    retirada = substituicao.seleciona_pagina();
+                    break;
+                
+                case 2:
+                    retirada = substituicao.seleciona_pagina(estrutura);
+                    break;
+                
+                case 3:
+                    retirada = substituicao.seleciona_pagina(estrutura, processo);
+                    break;
+                
+                case 4:
+                    /* code */
+                    break;
+                
+                default:
+                    break;
+            }
+
             remove_pagina(retirada);
 
             substituicao.imprime_estrutura(estrutura);
