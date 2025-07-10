@@ -145,12 +145,15 @@ int alocar_entrada(int processo, int end_virtual, int modo)
     else
     {
         //page-fault
-        aguardando[processo-1] = 1;
+        if(aguardando[processo-1] == 0){
+            printf("\tPage-fault!\n");
+        }
+            aguardando[processo-1] = 1;
         // quando nao esta na ram, verifica se tem espaço
         if (ram.contador == 16)
         {
             // page-fault com substituicao
-            printf("\nPage-fault\n");
+            printf("\tSubstituicao\n");
             return 1;
         }
         else
@@ -172,6 +175,7 @@ int alocar_entrada(int processo, int end_virtual, int modo)
 
 void mostra_paginas_ram()
 {
+    printf("\n\t\tQuadros de Paginas(memoria fisica)\n");
     for (int i = 0; i < 128; i++)
     {
         Entrada *entrada = ram.tabela_de_paginas[i];
@@ -828,6 +832,8 @@ int main()
     int pf, modo, pagina;
     for (int processo = 1; rodadas >= 0; processo++)
     {
+        printf("\n===========================================================================================");
+        printf("\n===========================================================================================");
         if(aguardando[processo-1] == 0){
             kill(filhos[processo-1], SIGUSR1);
             // espera até o sinal chegar
@@ -838,8 +844,8 @@ int main()
 
             modo = processo_local.pagina_atual.modo;
             pagina = processo_local.pagina_atual.numero;
-
-            printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", rodadas, pagina, modo);
+            
+            printf("\nRodada %d\nprocesso: %d\tpagina: %d\tmodo: %d\n\n", rodadas, processo, pagina, modo);
             
             pf = alocar_entrada(processo, pagina, modo);
             if (pf == 1)
@@ -887,7 +893,7 @@ int main()
             }
 
             if(aguardando[processo-1] == 1){
-                printf("\nKernel: Página %d do processo %d foi esta sendo copiada para a ram\n\n", pagina, processo);
+                printf("\nKernel: Página %d do processo %d esta sendo copiada para a ram\n\n", pagina, processo);
             }
             else{
                 printf("\nKernel: Página %d do processo %d foi alocada!\n\n", pagina, processo);
@@ -898,6 +904,7 @@ int main()
             }
         }
         else{
+            printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", rodadas, pagina, modo);
             printf("\nKernel: Processo %d bloqueado, aguardando dados do disco de swap\n", processo);
             aguardando[processo-1] = 0;
         }
