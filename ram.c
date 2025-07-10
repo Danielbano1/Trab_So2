@@ -726,8 +726,14 @@ void handler_sigusr2(int sig) {
 
 int main()
 {
+    int opcao;
+    int rodadas;
+    printf("\nEscolha um algoritmo: NRU(global) - 1, Segunda-Chance(global) - 2, Workin-Set(local) - 3, LRU-Anging(local) - 4\n");
+    scanf("%d", &opcao);
     Substituicao substituicao;
-    escolher_algoritmo(&substituicao, 4);
+    escolher_algoritmo(&substituicao, opcao);
+    printf("\nEscolha o numero de rodadas: \n");
+    scanf("%d", &rodadas);
 
     // cria estrutura
     void* estrutura;
@@ -809,7 +815,6 @@ int main()
     signal(SIGUSR2, handler_sigusr2);
 
     // escalonamento round-robin
-    int rodadas = 40;
     int pf, modo, pagina;
     for (int processo = 1; rodadas >= 0; rodadas--, processo++)
     {
@@ -900,6 +905,11 @@ int main()
     shmdt(p);
     shmctl(shmid, IPC_RMID, NULL); 
 
+    if(substituicao.algoritmo == 3){
+        printf("estrutura desalocada\n");
+        printf("TP desalocada\n");
+        return 0;
+    }
     printf("estrutura desalocada\n");
     desalocar_TP();
     printf("TP desalocada\n");
