@@ -68,7 +68,6 @@ void desalocar_TP()
     for (int i = 0; i < 128; i++)
     {
         if(ram.tabela_de_paginas[i] != NULL){
-            printf("%p", ram.tabela_de_paginas[i]);
             free(ram.tabela_de_paginas[i]);
         }
     }
@@ -249,15 +248,6 @@ Entrada *NRU()
     return escolhe_paginaNRU(tabela, 16);
 }
 
-void* retorna_nada_ponteiro(){
-    return NULL;
-}
-
-void retorna_nada(void* estrutura){
-    return;
-}
-
-
 // Second-Chance
 typedef struct No_SC {
     Entrada* entrada;
@@ -367,7 +357,7 @@ void libera_SC(void* estrutura){
     free(fila);
 }
 
-// Working-set
+// Working-set (local)
 typedef struct 
 {
     int processo;
@@ -498,12 +488,157 @@ void imprime_WK(void* estrutura){
     printf("\n");
 }
 
+// LRU-anging (local)
+typedef struct 
+{
+    Entrada* entrada;
+    unsigned char contador;
+}No_LRU;
+
+typedef struct
+{
+    No_LRU vetor[16];
+}Estrutura_LRU;
+
+void* cria_estrutura_LRU(){
+    Estrutura_LRU* estrutura = (Estrutura_LRU*)malloc(sizeof(Estrutura_LRU));
+
+    for(int i = 0; i < 16; i++){
+        estrutura->vetor[i].contador = 0;
+        estrutura->vetor[i].entrada = NULL;
+    }
+
+    return estrutura;
+}
+
+void insere_entrada_LRU(void* estrutura, Entrada* entrada){
+    Estrutura_LRU* estrutura_lru = (Estrutura_LRU*)estrutura;
+
+    for(int i = 0; i < 16; i++){
+        if(estrutura_lru->vetor[i].entrada == entrada){
+            return;
+        }
+        if(estrutura_lru->vetor[i].entrada == NULL){
+            estrutura_lru->vetor[i].entrada = entrada;
+            return;
+        }
+
+    }
+}
+
+// sempre que for usar criar antes int* tamanho e vetor retornado deve ser liberado apos uso
+No_LRU* vetor_processo(Estrutura_LRU* estrutura_lru, int processo, int* tamanho){
+    int qtd_entradas = 0;
+    No_LRU* v_original = estrutura_lru->vetor;
+    // conta entradas do processo (para criar vetor dps)
+    for(int i = 0; i < 16; i++){
+        if(v_original[i].entrada != NULL && v_original[i].entrada->processo == processo){
+            qtd_entradas++;
+        }
+    }
+
+    // nao acontece
+    if(qtd_entradas == 0){
+        printf("\nFalha - sem pagina para retirar local\n");
+        exit(1);
+    }
+
+    // cria vetor dinamico com as entradas do processo
+    No_LRU* novo_vetor = (No_LRU*)malloc(sizeof(No_LRU)*qtd_entradas);
+    for(int i = 0, j = 0; i < 16; i++){
+        if(v_original[i].entrada != NULL && v_original[i].entrada->processo == processo){
+            novo_vetor[j] = v_original[i];
+            j++;
+        }
+    }
+
+    *tamanho = qtd_entradas;
+    return novo_vetor;
+
+}
+
+unsigned char verifica_menor_contador(No_LRU* novo_vetor, int tamanho){
+    unsigned char menor_valor = novo_vetor[0].contador;
+    for(int i = 1; i < tamanho; i++){
+        if(novo_vetor[i].contador < menor_valor){ 
+            menor_valor = novo_vetor[i].contador;
+        }
+    }
+
+    return menor_valor;
+}
+
+Entrada* remove_LRU(void* estrutura, int processo){
+    Estrutura_LRU* estrutura_lru = (Estrutura_LRU*)estrutura;
+
+    Entrada* removida;
+    int tamanho;
+    No_LRU* novo_vetor = vetor_processo(estrutura_lru, processo, &tamanho);
+    unsigned char menor_valor = verifica_menor_contador(novo_vetor, tamanho);
+    for(int i = 0; i < tamanho; i++){
+        if(novo_vetor[i].contador == menor_valor){
+            removida =  novo_vetor[i].entrada;
+            break;
+        }
+    }
+    for(int i = 0; i < 16; i++){
+        if(estrutura_lru->vetor[i].entrada == removida){
+            estrutura_lru->vetor[i].entrada = NULL;
+            estrutura_lru->vetor[i].contador = 0;
+            break;
+        }
+    }
+
+    free(novo_vetor);
+
+    return removida;
+
+}
+
+void atualiza_estrutura_LRU(void* estrutura){
+    Estrutura_LRU* estrutura_lru = (Estrutura_LRU*)estrutura;
+
+    for(int i = 0; i < 16; i++){
+        if (estrutura_lru->vetor[i].entrada != NULL) {
+            estrutura_lru->vetor[i].contador >>= 1;
+
+            if (estrutura_lru->vetor[i].entrada->referenciado == 1){
+                estrutura_lru->vetor[i].contador |= 0x80;  // seta o bit mais significativo
+            }
+        }
+    }
+}
+
+void exibe_estrutura_LRU(void* estrutura){
+    Estrutura_LRU* estrutura_lru = (Estrutura_LRU*)estrutura;
+
+    No_LRU atual;
+    for(int i = 0; i < 16; i++){
+        atual = estrutura_lru->vetor[i];
+        if (atual.entrada != NULL){
+            printf("processo %d, end_virtual: %d, contador: %u\n",
+                    atual.entrada->processo,
+                    atual.entrada->end_virtual, 
+                    atual.contador);
+        }
+        else{
+            printf("vazio\n");
+        }
+    }
+    printf("\n");
+}
+
+void libera_estrutura_LRU(void* estrutura){
+    Estrutura_LRU* estrutura_lru = (Estrutura_LRU*)estrutura;
+
+    free(estrutura_lru);
+}
+
 // Interface para algoritmos usando padrao Strategy
 typedef void* (*FuncCriaEstrutura)();
 typedef void (*FuncLiberaEstrutura)();
 typedef void (*FuncNovaEntrada)();
-typedef void (*FuncTerminoRodada)();  // apagar?
-typedef void (*FuncZeroBitsR)();    // apagar?
+typedef void (*FuncTerminoRodada)();  
 typedef Entrada* (*FuncSelecionaPagina)();
 typedef void (*FuncImprimeEstrutura)();
 
@@ -515,6 +650,7 @@ typedef struct
     FuncNovaEntrada nova_entrada;
     FuncImprimeEstrutura imprime_estrutura;
     FuncLiberaEstrutura libera_estrutura;
+    FuncTerminoRodada termino_rodada;
 }Substituicao;
 
 void escolher_algoritmo(Substituicao* substituicao, int algoritmo){
@@ -530,11 +666,19 @@ void escolher_algoritmo(Substituicao* substituicao, int algoritmo){
         substituicao->imprime_estrutura = imprime_fila_SC;
     }
     else if(algoritmo == 3){
-        substituicao->seleciona_pagina = remove_WK; //diferente
+        substituicao->seleciona_pagina = remove_WK; //diferente local
         substituicao->cria_estrutura = cria_estrutura_WK; //diferente
         substituicao->libera_estrutura = libera_estrutura_WK;
         substituicao->nova_entrada = insere_entrada_WK;
         substituicao->imprime_estrutura = imprime_WK;
+    }
+    else if(algoritmo == 4){
+        substituicao->seleciona_pagina = remove_LRU; // local
+        substituicao->cria_estrutura = cria_estrutura_LRU;
+        substituicao->libera_estrutura = libera_estrutura_LRU;
+        substituicao->nova_entrada = insere_entrada_LRU;
+        substituicao->imprime_estrutura = exibe_estrutura_LRU;
+        substituicao->termino_rodada = atualiza_estrutura_LRU;
     }
     else{
         printf("\nEscolha errada\n");
@@ -581,7 +725,6 @@ int main()
     switch (substituicao.algoritmo)
     {
         case 1:
-            /* code */
             break;
         
         case 2:
@@ -600,7 +743,7 @@ int main()
             break;
         
         case 4:
-            /* code */
+            estrutura = substituicao.cria_estrutura();
             break;
         
         default:
@@ -630,8 +773,9 @@ int main()
         {
             printf("\n1\n");
             mostra_paginas_ram();
-            substituicao.imprime_estrutura(estrutura);
-
+            if(substituicao.algoritmo != 1){
+                substituicao.imprime_estrutura(estrutura);
+            }
             // trata page-fault
             Entrada* retirada;
             switch (substituicao.algoritmo)
@@ -649,7 +793,7 @@ int main()
                     break;
                 
                 case 4:
-                    /* code */
+                    retirada = substituicao.seleciona_pagina(estrutura, processo);
                     break;
                 
                 default:
@@ -658,17 +802,22 @@ int main()
 
             remove_pagina(retirada);
 
-            substituicao.imprime_estrutura(estrutura);
+            if(substituicao.algoritmo != 1){
+                substituicao.imprime_estrutura(estrutura);
+            }
             //mostra_paginas_ram();
 
             pf = alocar_entrada(processo, pagina, modo);
             
         }
-
-        substituicao.nova_entrada(estrutura, procura_na_ram(processo, pagina));
+        if(substituicao.algoritmo != 1){
+            substituicao.nova_entrada(estrutura, procura_na_ram(processo, pagina));
+        }
         printf("\nKernel: Página %d do processo %d foi alocada!\n\n", pagina, processo);
         //mostra_paginas_ram();
-        substituicao.imprime_estrutura(estrutura);
+        if(substituicao.algoritmo != 1){
+                substituicao.imprime_estrutura(estrutura);
+        }
 
         //mostra_paginas_ram();
 
@@ -677,10 +826,15 @@ int main()
         {
             processo = 1;
             zera_bit_R();
+            if(substituicao.algoritmo == 4){
+                substituicao.termino_rodada(estrutura);
+            }
         }
     }
 
-    substituicao.libera_estrutura(estrutura);
+    if(substituicao.algoritmo != 1){
+        substituicao.libera_estrutura(estrutura);
+    }
     printf("estrutura desalocada\n");
     desalocar_TP();
     printf("TP desalocada\n");
