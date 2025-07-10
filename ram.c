@@ -67,7 +67,10 @@ void desalocar_TP()
 {
     for (int i = 0; i < 128; i++)
     {
-        free(ram.tabela_de_paginas[i]);
+        if(ram.tabela_de_paginas[i] != NULL){
+            printf("%p", ram.tabela_de_paginas[i]);
+            free(ram.tabela_de_paginas[i]);
+        }
     }
 }
 
@@ -405,6 +408,21 @@ void remove_velho_WK(int* vetor, int k){
     }
 }
 
+void referencia_WK(int* vetor, int pos, int k){
+    int referenciado = vetor[pos];
+    int ult_valor;
+    // achar o ultimo valor
+    for(int i = k-1; i >= pos; i--){
+        if(vetor[i] != -1){
+            ult_valor = vetor[i];
+        }
+    }
+    for(int i = pos; i < (k-ult_valor); i++){
+        vetor[i] = vetor[i+1];
+    }
+    vetor[ult_valor] = referenciado;
+}
+
 void insere_entrada_WK(void* estrutura, Entrada* entrada){
     Estrutura_WK* estrutura_wk = (Estrutura_WK*)estrutura;
 
@@ -414,7 +432,11 @@ void insere_entrada_WK(void* estrutura, Entrada* entrada){
     int* vetor = estrutura_wk->processos[processo-1].vetor;
 
     for(int i = 0; i < k; i++){
-        if(vetor[i] == -1 || vetor[i] == end_virtual){
+        if(vetor[i] == end_virtual){
+            referencia_WK(vetor, i, k);
+            return;
+        }
+        if(vetor[i] == -1 ){
             vetor[i] = end_virtual;
             return;
         }
@@ -473,6 +495,7 @@ void imprime_WK(void* estrutura){
                 printf("[%02d] ", lista_processo[j]);
         }
     }
+    printf("\n");
 }
 
 // Interface para algoritmos usando padrao Strategy
@@ -550,7 +573,7 @@ void gera_pagina(Processo processo)
 int main()
 {
     Substituicao substituicao;
-    escolher_algoritmo(&substituicao, 2);
+    escolher_algoritmo(&substituicao, 3);
 
     // cria estrutura
     void* estrutura;
@@ -636,7 +659,7 @@ int main()
             remove_pagina(retirada);
 
             substituicao.imprime_estrutura(estrutura);
-            mostra_paginas_ram();
+            //mostra_paginas_ram();
 
             pf = alocar_entrada(processo, pagina, modo);
             
@@ -644,7 +667,7 @@ int main()
 
         substituicao.nova_entrada(estrutura, procura_na_ram(processo, pagina));
         printf("\nKernel: Página %d do processo %d foi alocada!\n\n", pagina, processo);
-        mostra_paginas_ram();
+        //mostra_paginas_ram();
         substituicao.imprime_estrutura(estrutura);
 
         //mostra_paginas_ram();
