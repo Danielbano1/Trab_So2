@@ -132,21 +132,26 @@ int primeiro_vazio_TP(){
     }
 }
 
-void motar_tabela_processos(){
+void montar_tabela_processos(){
     for(int j = 0; j < 4; j++){
         printf("\n\tTabela do processo %d\n", j+1);
+
+        printf("\n\tPaginas na ram\n");
         for (int i = 0; i < 128; i++){
             Entrada *entrada = ram.tabela_de_paginas[i];
             if (entrada->presente_na_ram == 1 && entrada->processo == j+1)
             {
-                printf("\n\tPaginas na ram\n");
-                printf("end_virtual: %d\tmodificado: %d\treferenciado: %d\tend_fisico: %d\n",
-                    entrada->processo, entrada->end_virtual, entrada->modificado, entrada->referenciado, entrada->end_fisico);
+                printf("end_virtual: %d\tmodificado: %d\tend_fisico: %d\n",
+                    entrada->end_virtual, entrada->modificado, entrada->end_fisico);
             }
-            else if(entrada->presente_na_ram == 0 && entrada->processo == j+1){
-                printf("\n\tPaginas na ram\n");
-                printf("end_virtual: %d\tmodificado: %d\treferenciado: %d\tend_fisico: %d\n",
-                    entrada->processo, entrada->end_virtual, entrada->modificado, entrada->referenciado, entrada->end_fisico);
+        }
+
+        printf("\n\tPaginas fora da ram\n");
+        for (int i = 0; i < 128; i++){
+            Entrada *entrada = ram.tabela_de_paginas[i];
+            if(entrada->presente_na_ram == 0 && entrada->processo == j+1){
+                printf("end_virtual: %d\tmodificado: %d\n",
+                    entrada->end_virtual, entrada->modificado);
             }
         }
     }
@@ -944,6 +949,8 @@ int main()
         }
     }
 
+    printf("\n\t### Fim da simulacao ###\n");
+
     // Mata filhos e limpa
     for (int i = 0; i < NUM_FILHOS; i++) {
         kill(filhos[i], SIGKILL);
@@ -958,8 +965,11 @@ int main()
         substituicao.libera_estrutura(estrutura);
         printf("estrutura desalocada\n");
     }
+
+    montar_tabela_processos();
+
     desalocar_TP();
-    printf("TP desalocada\n");
+    printf("\nTP desalocada\n");
 
     return 0;
 }
