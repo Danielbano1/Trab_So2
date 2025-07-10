@@ -417,16 +417,18 @@ void remove_velho_WK(int* vetor, int k){
 void referencia_WK(int* vetor, int pos, int k){
     int referenciado = vetor[pos];
     int ult_valor;
+    int pos_ult_valor;
     // achar o ultimo valor
     for(int i = k-1; i >= pos; i--){
         if(vetor[i] != -1){
             ult_valor = vetor[i];
         }
     }
-    for(int i = pos; i < (k-ult_valor); i++){
-        vetor[i] = vetor[i+1];
+    // coloca o referenciado no final do vetor
+    for(int i = 0; i < (pos_ult_valor-pos); i++){
+        vetor[pos+i] = vetor[pos+i+1];
     }
-    vetor[ult_valor] = referenciado;
+    vetor[pos_ult_valor] = referenciado;
 }
 
 void insere_entrada_WK(void* estrutura, Entrada* entrada){
@@ -482,6 +484,7 @@ Entrada* remove_WK(void* estrutura, int processo){
     // remover o mais velho do WK
     retirada = procura_na_ram(processo, vetor[0]);
     remove_velho_WK(vetor, k);
+    vetor[k-1] = end_virtual;
 
     return retirada;
 }
@@ -818,14 +821,15 @@ int main()
 
     // escalonamento round-robin
     int pf, modo, pagina;
-    for (int processo = 1; rodadas >= 0; rodadas--, processo++)
+    for (int processo = 1; rodadas >= 0; processo++)
     {
         kill(filhos[processo-1], SIGUSR1);
          // espera até o sinal chegar
         while (!sinal_recebido) {
             pause();
         }
-        
+        sinal_recebido = 0;
+
         modo = processo_local.pagina_atual.modo;
         pagina = processo_local.pagina_atual.numero;
 
@@ -894,11 +898,8 @@ int main()
             }
             zera_bit_R();
             processo = 0;
+            rodadas--;
         }
-    }
-
-    if(substituicao.algoritmo != 1){
-        substituicao.libera_estrutura(estrutura);
     }
 
     // Mata filhos e limpa
@@ -911,12 +912,10 @@ int main()
     shmdt(p);
     shmctl(shmid, IPC_RMID, NULL); 
 
-    if(substituicao.algoritmo == 3){
+    if(substituicao.algoritmo != 1){
+        substituicao.libera_estrutura(estrutura);
         printf("estrutura desalocada\n");
-        printf("TP desalocada\n");
-        return 0;
     }
-    printf("estrutura desalocada\n");
     desalocar_TP();
     printf("TP desalocada\n");
 
