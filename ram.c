@@ -58,6 +58,7 @@ Processo processo_local; // struct local em cada processo
 pid_t filhos[NUM_FILHOS];
 int shmid;
 int sinal_recebido = 0;
+int aguardando[4];
 
 // kernel
 void alocar_TP()
@@ -143,10 +144,12 @@ int alocar_entrada(int processo, int end_virtual, int modo)
     }
     else
     {
+        //page-fault
+        aguardando[processo-1] = 1;
         // quando nao esta na ram, verifica se tem espaço
         if (ram.contador == 16)
         {
-            // page-fault
+            // page-fault com substituicao
             printf("\nPage-fault\n");
             return 1;
         }
@@ -825,69 +828,78 @@ int main()
     int pf, modo, pagina;
     for (int processo = 1; rodadas >= 0; processo++)
     {
-        kill(filhos[processo-1], SIGUSR1);
-         // espera até o sinal chegar
-        while (!sinal_recebido) {
-            pause();
-        }
-        sinal_recebido = 0;
-
-        modo = processo_local.pagina_atual.modo;
-        pagina = processo_local.pagina_atual.numero;
-
-        printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", rodadas, pagina, modo);
-        if(rodadas <= 4){
-            printf("\n2\n");
-        }
-        pf = alocar_entrada(processo, pagina, modo);
-        if (pf == 1)
-        {
-            printf("\n1\n");
-            mostra_paginas_ram();
-            if(substituicao.algoritmo != 1){
-                substituicao.imprime_estrutura(estrutura);
+        if(aguardando[processo-1] == 0){
+            kill(filhos[processo-1], SIGUSR1);
+            // espera até o sinal chegar
+            while (!sinal_recebido) {
+                pause();
             }
-            // trata page-fault
-            Entrada* retirada;
-            switch (substituicao.algoritmo)
-            {
-                case 1:
-                    retirada = substituicao.seleciona_pagina();
-                    break;
-                
-                case 2:
-                    retirada = substituicao.seleciona_pagina(estrutura);
-                    break;
-                
-                case 3:
-                    retirada = substituicao.seleciona_pagina(estrutura, processo);
-                    break;
-                
-                case 4:
-                    retirada = substituicao.seleciona_pagina(estrutura, processo);
-                    break;
-                
-                default:
-                    break;
-            }
+            sinal_recebido = 0;
 
-            remove_pagina(retirada);
+            modo = processo_local.pagina_atual.modo;
+            pagina = processo_local.pagina_atual.numero;
 
-            if(substituicao.algoritmo != 1){
-                substituicao.imprime_estrutura(estrutura);
-            }
-            //mostra_paginas_ram();
-
-            pf = alocar_entrada(processo, pagina, modo);
+            printf("\n\nRodada %d\npagina: %d\tmodo: %d\n\n", rodadas, pagina, modo);
             
+            pf = alocar_entrada(processo, pagina, modo);
+            if (pf == 1)
+            {
+                mostra_paginas_ram();
+                if(substituicao.algoritmo != 1){
+                    substituicao.imprime_estrutura(estrutura);
+                }
+                // trata page-fault
+                Entrada* retirada;
+                switch (substituicao.algoritmo)
+                {
+                    case 1:
+                        retirada = substituicao.seleciona_pagina();
+                        break;
+                    
+                    case 2:
+                        retirada = substituicao.seleciona_pagina(estrutura);
+                        break;
+                    
+                    case 3:
+                        retirada = substituicao.seleciona_pagina(estrutura, processo);
+                        break;
+                    
+                    case 4:
+                        retirada = substituicao.seleciona_pagina(estrutura, processo);
+                        break;
+                    
+                    default:
+                        break;
+                }
+
+                remove_pagina(retirada);
+
+                if(substituicao.algoritmo != 1){
+                    substituicao.imprime_estrutura(estrutura);
+                }
+                //mostra_paginas_ram();
+
+                pf = alocar_entrada(processo, pagina, modo);
+                
+            }
+            if(substituicao.algoritmo != 1){
+                substituicao.nova_entrada(estrutura, procura_na_ram(processo, pagina));
+            }
+
+            if(aguardando[processo-1] == 1){
+                printf("\nKernel: Página %d do processo %d foi esta sendo copiada para a ram\n\n", pagina, processo);
+            }
+            else{
+                printf("\nKernel: Página %d do processo %d foi alocada!\n\n", pagina, processo);
+                //mostra_paginas_ram();
+                if(substituicao.algoritmo != 1){
+                        substituicao.imprime_estrutura(estrutura);
+                }
+            }
         }
-        if(substituicao.algoritmo != 1){
-            substituicao.nova_entrada(estrutura, procura_na_ram(processo, pagina));
-        }
-        printf("\nKernel: Página %d do processo %d foi alocada!\n\n", pagina, processo);
-        //mostra_paginas_ram();
-        if(substituicao.algoritmo != 1){
-                substituicao.imprime_estrutura(estrutura);
+        else{
+            printf("\nKernel: Processo %d bloqueado, aguardando dados do disco de swap\n", processo);
+            aguardando[processo-1] = 0;
         }
 
         //mostra_paginas_ram();
