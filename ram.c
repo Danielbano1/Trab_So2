@@ -63,6 +63,23 @@ int conta_page_faults=0;
 int substituicao_p[4];
 int conta_pagina_suja = 0;
 
+Pagina vetor1[] = {
+    {1,0}, {2,0}, {3,0}
+};
+Pagina vetor2[] = {
+    {7,0}, {15,0}, {19,0}
+};
+Pagina vetor3[] = {
+    {20,1}, {24,1}, {25,1}
+};
+Pagina vetor4[] = {
+    {28,0}, {29 ,0}, {30,0}
+};
+Pagina vetor5[] = {
+    {12,0}, {18,0}, {23,0}
+};
+int X = 1;
+
 void imprime_est(){
     printf("\nTotal de page-faults: %d\n", conta_page_faults);
     printf("\nTotal de paginas sujas: %d\n", conta_pagina_suja);
@@ -759,9 +776,23 @@ void escolher_algoritmo(Substituicao* substituicao, int algoritmo){
 // Funcoes dos processos e handlers
 void gera_pagina(Processo* proc) {
     
-    proc->pagina_atual.numero = rand() % 32;
-    proc->pagina_atual.modo = rand() % 2;
+    if(X < 21){
+        proc->pagina_atual = vetor1[rand() % 4];
+    }
+    else if(X < 41){
+        proc->pagina_atual = vetor2[rand() % 4];
+    }
+    else if(X < 61){
+        proc->pagina_atual = vetor3[rand() % 4];
+    }
+    else if(X < 81){
+        proc->pagina_atual = vetor4[rand() % 4];
+    }
+    else if(X < 101){
+        proc->pagina_atual = vetor5[rand() % 4];
+    }
     
+    X++;
 }
 
 void handler_sigusr1(int sig) {
